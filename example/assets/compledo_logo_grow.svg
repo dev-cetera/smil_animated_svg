@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Grow animation: stem sprouts, heart blooms with pop, tick draws on and pops -->
+
+  <!-- Pot (always visible) -->
+  <path d="M168 340 h176 l-24 120 h-128 z" fill="#9E8E7E" />
+  <rect x="152" y="320" width="208" height="28" rx="6" fill="#7A6A5A" />
+
+  <!-- Stem — grows upward from pot rim, origin at base (256, 330) -->
+  <g transform="translate(256, 330)">
+    <g>
+      <animateTransform
+        attributeName="transform"
+        type="scale"
+        values="1 0; 1 0.15; 1 0.5; 1 1.06; 1 0.97; 1 1"
+        keyTimes="0; 0.15; 0.45; 0.75; 0.9; 1"
+        keySplines="0.4 0 0.7 0.2; 0.3 0.1 0.5 1; 0.2 0.4 0.4 1; 0.5 0 0.5 1; 0.5 0 0.5 1"
+        calcMode="spline"
+        dur="0.7s"
+        fill="freeze"
+      />
+      <g transform="translate(-256, -330)">
+        <rect x="244" y="210" width="24" height="120" rx="4" fill="#5C3A1E" />
+      </g>
+    </g>
+  </g>
+
+  <!-- Left branch — draws on -->
+  <path d="M256 270 Q228 258 216 238"
+    stroke="#5C3A1E" stroke-width="10" stroke-linecap="round" fill="none"
+    stroke-dasharray="55" stroke-dashoffset="55">
+    <animate
+      attributeName="stroke-dashoffset"
+      from="55" to="0"
+      begin="0.35s" dur="0.35s"
+      fill="freeze"
+      calcMode="spline"
+      keySplines="0.25 0.1 0.25 1"
+    />
+  </path>
+
+  <!-- Right branch — draws on -->
+  <path d="M256 248 Q282 234 294 218"
+    stroke="#5C3A1E" stroke-width="8" stroke-linecap="round" fill="none"
+    stroke-dasharray="50" stroke-dashoffset="50">
+    <animate
+      attributeName="stroke-dashoffset"
+      from="50" to="0"
+      begin="0.45s" dur="0.35s"
+      fill="freeze"
+      calcMode="spline"
+      keySplines="0.25 0.1 0.25 1"
+    />
+  </path>
+
+  <!-- Heart + tick — single animation from 0s so heart stays hidden until bloom -->
+  <g transform="translate(256, 170)">
+    <g>
+      <!--
+        Timeline within 2.2s:
+        0-0.55s  (0-0.25):    hold scale 0 (hidden)
+        0.55s    (0.25):      start bloom
+        1.0s     (0.45):      overshoot to 1.18
+        1.15s    (0.52):      undershoot to 0.94
+        1.3s     (0.59):      settle to 1
+        1.7s     (0.77):      hold at 1 (tick draws)
+        1.85s    (0.84):      pop to 1.22
+        2.0s     (0.91):      undershoot to 0.95
+        2.2s     (1.0):       settle to 1
+      -->
+      <animateTransform
+        attributeName="transform"
+        type="scale"
+        values="0; 0; 1.18; 0.94; 1; 1; 1.22; 0.95; 1"
+        keyTimes="0; 0.25; 0.45; 0.52; 0.59; 0.77; 0.84; 0.91; 1"
+        keySplines="
+          0.1 0 0.9 1;
+          0.1 0.8 0.3 1;
+          0.5 0 0.5 1;
+          0.5 0 0.5 1;
+          0.5 0 0.5 1;
+          0.1 0.8 0.3 1;
+          0.5 0 0.5 1;
+          0.5 0 0.5 1"
+        calcMode="spline"
+        dur="2.2s"
+        fill="freeze"
+      />
+      <g transform="translate(-256, -170)">
+        <!-- Heart (dark green base) -->
+        <path d="M256 298
+          C256 298 244 280 210 246
+          C170 206 136 168 136 122
+          C136 78 166 46 206 46
+          C234 46 250 62 256 74
+          C262 62 278 46 306 46
+          C346 46 376 78 376 122
+          C376 168 342 206 302 246
+          C268 280 256 298 256 298 Z"
+          fill="#2E7D32" />
+        <!-- Heart (light green inner) -->
+        <path d="M256 258
+          C256 258 248 246 226 224
+          C198 196 178 174 178 142
+          C178 112 196 90 222 90
+          C240 90 252 100 256 106
+          C260 100 272 90 290 90
+          C316 90 334 112 334 142
+          C334 174 314 196 286 224
+          C264 246 256 258 256 258 Z"
+          fill="#66BB6A" />
+
+        <!-- Tick — very fast draw-on with ease-in (slow start, snappy whip) -->
+        <path d="M217 153 L243 189 L296 121"
+          stroke="white" stroke-width="21" stroke-linecap="round" stroke-linejoin="round" fill="none"
+          stroke-dasharray="135" stroke-dashoffset="135">
+          <animate
+            attributeName="stroke-dashoffset"
+            from="135" to="0"
+            begin="1.35s" dur="0.18s"
+            fill="freeze"
+            calcMode="spline"
+            keySplines="0.7 0 1 0.6"
+          />
+        </path>
+      </g>
+    </g>
+  </g>
+</svg>
