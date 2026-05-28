@@ -1,17 +1,17 @@
 import 'package:animated_svg/animated_svg.dart';
 import 'package:flutter/material.dart';
 
-void main() => runApp(const _App());
+void main() => runApp(const AnimatedSvgExampleApp());
 
-class _App extends StatelessWidget {
-  const _App();
+class AnimatedSvgExampleApp extends StatelessWidget {
+  const AnimatedSvgExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'animated_svg example',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff2E7D32)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff1976d2)),
         useMaterial3: true,
       ),
       home: const _Home(),
@@ -28,10 +28,11 @@ class _Home extends StatefulWidget {
 
 class _HomeState extends State<_Home> {
   static const List<({String label, String asset})> samples = [
-    (label: 'sway', asset: 'assets/compledo_logo_sway.svg'),
-    (label: 'grow', asset: 'assets/compledo_logo_grow.svg'),
-    (label: 'beat', asset: 'assets/compledo_logo_animated.svg'),
-    (label: 'static', asset: 'assets/compledo_heart_inapp.svg'),
+    (label: 'Spinner', asset: 'assets/spinner.svg'),
+    (label: 'Pulse', asset: 'assets/pulse.svg'),
+    (label: 'Color wave', asset: 'assets/color_wave.svg'),
+    (label: 'Bounce', asset: 'assets/bounce.svg'),
+    (label: 'Static', asset: 'assets/shapes.svg'),
   ];
 
   int sampleIndex = 0;
@@ -45,16 +46,24 @@ class _HomeState extends State<_Home> {
 
   late final List<({String label, ColorFilter? filter})> filters = [
     (label: 'None (preserve SVG colours)', filter: null),
-    (label: 'Grayscale (luminance-preserving)',
-        filter: AnimatedSvgFilters.grayscale),
+    (
+      label: 'Grayscale (luminance-preserving)',
+      filter: AnimatedSvgFilters.grayscale,
+    ),
     (label: 'Sepia', filter: AnimatedSvgFilters.sepia),
     (label: 'Invert', filter: AnimatedSvgFilters.invert),
-    (label: 'Tint blue (modulate — preserves shading)',
-        filter: AnimatedSvgFilters.tint(Colors.blue)),
-    (label: 'Colorize blue (replace hue, keep luminance)',
-        filter: AnimatedSvgFilters.colorize(Colors.blue)),
-    (label: 'Silhouette blue (srcIn — replace all pixels)',
-        filter: const ColorFilter.mode(Colors.blue, BlendMode.srcIn)),
+    (
+      label: 'Tint blue (modulate — preserves shading)',
+      filter: AnimatedSvgFilters.tint(Colors.blue),
+    ),
+    (
+      label: 'Colorize blue (replace hue, keep luminance)',
+      filter: AnimatedSvgFilters.colorize(Colors.blue),
+    ),
+    (
+      label: 'Silhouette blue (srcIn — replace all pixels)',
+      filter: const ColorFilter.mode(Colors.blue, BlendMode.srcIn),
+    ),
   ];
 
   @override

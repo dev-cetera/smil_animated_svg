@@ -53,8 +53,11 @@ class AnimatedSvgPainter extends CustomPainter {
 
   double get _liveT {
     final source = animation;
-    if (source != null) return source.value.clamp(0.0, 1.0);
-    return position.clamp(0.0, 1.0);
+    final raw = source != null ? source.value : position;
+    // `.clamp` propagates NaN; downstream `position * cyclePeriodSeconds`
+    // would then poison every animation evaluator on the frame.
+    if (!raw.isFinite) return 0.0;
+    return raw.clamp(0.0, 1.0);
   }
 
   ColorFilter? get _effectiveColorFilter {
@@ -76,8 +79,9 @@ class AnimatedSvgPainter extends CustomPainter {
 
   double get _effectiveOpacity {
     final tween = opacityTween;
-    if (tween != null) return tween.transform(_liveT).clamp(0.0, 1.0);
-    return opacity.clamp(0.0, 1.0);
+    final raw = tween != null ? tween.transform(_liveT) : opacity;
+    if (!raw.isFinite) return 1.0;
+    return raw.clamp(0.0, 1.0);
   }
 
   @override
@@ -251,7 +255,11 @@ class AnimatedSvgPainter extends CustomPainter {
 
   double _parseClampedOpacity(String? raw) {
     if (raw == null) return 1.0;
-    return (double.tryParse(raw) ?? 1.0).clamp(0.0, 1.0);
+    final parsed = double.tryParse(raw);
+    // `.clamp` propagates NaN, which then poisons the Paint alpha and draws
+    // nothing — collapse anything non-finite back to the SVG default of 1.
+    if (parsed == null || !parsed.isFinite) return 1.0;
+    return parsed.clamp(0.0, 1.0);
   }
 
   List<double> _parseLengthList(String? raw) {
@@ -286,7 +294,7 @@ class AnimatedSvgPainter extends CustomPainter {
     final patternLength = pattern.fold<double>(0.0, (a, b) => a + b);
     if (!patternLength.isFinite || patternLength <= 0.0) return source;
 
-    double startOffset = offset.isFinite ? offset % patternLength : 0.0;
+    var startOffset = offset.isFinite ? offset % patternLength : 0.0;
     if (startOffset < 0.0) startOffset += patternLength;
 
     final result = Path();
@@ -349,7 +357,9 @@ class AnimatedSvgPainter extends CustomPainter {
   double _opacityOf(Map<String, String> attrs) {
     final raw = attrs['opacity'];
     if (raw == null) return 1.0;
-    return (double.tryParse(raw) ?? 1.0).clamp(0.0, 1.0);
+    final parsed = double.tryParse(raw);
+    if (parsed == null || !parsed.isFinite) return 1.0;
+    return parsed.clamp(0.0, 1.0);
   }
 
   StrokeCap _strokeCap(String? raw) {

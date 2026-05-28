@@ -158,7 +158,7 @@ double _cubicBezier(double x1, double y1, double x2, double y2, double t) {
   if (t <= 0.0) return 0.0;
   if (t >= 1.0) return 1.0;
   // Solve bezierX(s) = t via Newton's method, then return bezierY(s).
-  double s = t;
+  var s = t;
   for (var i = 0; i < 8; i++) {
     final x = _bezier1d(x1, x2, s);
     final diff = x - t;
@@ -235,20 +235,25 @@ Color? parseSvgColor(String input) {
   if (value.startsWith('#')) {
     final hex = value.substring(1);
     if (hex.length == 3) {
-      final r = int.parse(hex[0] * 2, radix: 16);
-      final g = int.parse(hex[1] * 2, radix: 16);
-      final b = int.parse(hex[2] * 2, radix: 16);
+      final r = int.tryParse(hex[0] * 2, radix: 16);
+      final g = int.tryParse(hex[1] * 2, radix: 16);
+      final b = int.tryParse(hex[2] * 2, radix: 16);
+      if (r == null || g == null || b == null) return null;
       return Color.fromARGB(0xff, r, g, b);
     }
     if (hex.length == 6) {
-      return Color(0xff000000 | int.parse(hex, radix: 16));
+      final rgb = int.tryParse(hex, radix: 16);
+      if (rgb == null) return null;
+      return Color(0xff000000 | rgb);
     }
     if (hex.length == 8) {
       // #RRGGBBAA — convert to ARGB.
-      final rgb = int.parse(hex.substring(0, 6), radix: 16);
-      final a = int.parse(hex.substring(6, 8), radix: 16);
+      final rgb = int.tryParse(hex.substring(0, 6), radix: 16);
+      final a = int.tryParse(hex.substring(6, 8), radix: 16);
+      if (rgb == null || a == null) return null;
       return Color((a << 24) | rgb);
     }
+    return null;
   }
 
   final rgb = RegExp(r'^rgba?\s*\(([^)]+)\)$').firstMatch(value);

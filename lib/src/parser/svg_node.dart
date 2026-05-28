@@ -34,7 +34,7 @@ class SvgRoot {
   late final Duration naturalCyclePeriod = _computeNaturalCyclePeriod();
 
   Duration _computeNaturalCyclePeriod() {
-    Duration longest = Duration.zero;
+    var longest = Duration.zero;
     void visit(SvgNode node) {
       for (final animation in node.animations) {
         if (animation.duration > longest) longest = animation.duration;
@@ -216,11 +216,14 @@ class SvgEllipseShape extends SvgShape {
     final cy = _num(live['cy']) ?? 0.0;
     final rx = _num(live['rx']) ?? 0.0;
     final ry = _num(live['ry']) ?? 0.0;
-    return Path()..addOval(Rect.fromCenter(
-      center: Offset(cx, cy),
-      width: rx * 2.0,
-      height: ry * 2.0,
-    ));
+    return Path()
+      ..addOval(
+        Rect.fromCenter(
+          center: Offset(cx, cy),
+          width: rx * 2.0,
+          height: ry * 2.0,
+        ),
+      );
   }
 }
 

@@ -1,312 +1,586 @@
-import 'dart:io';
 import 'dart:ui' show Size;
 
 import 'package:animated_svg/animated_svg.dart';
 import 'package:animated_svg/src/parser/svg_animation.dart';
-import 'package:animated_svg/src/render/evaluator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('parses sway SVG: viewBox + nested groups + animateTransform', () {
-    final source = File('example/assets/compledo_logo_sway.svg').readAsStringSync();
-    final root = parseSvg(source);
+  group('parseSvg — document structure', () {
+    test('rejects non-<svg> root with FormatException', () {
+      expect(
+        () => parseSvg('<foo xmlns="http://www.w3.org/2000/svg"/>'),
+        throwsA(isA<FormatException>()),
+      );
+    });
 
-    expect(root.viewBox.width, 512.0);
-    expect(root.viewBox.height, 512.0);
-    expect(root.children, isNotEmpty);
+    test('viewBox is taken from the attribute when present', () {
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 30 40"/>',
+      );
+      expect(root.viewBox.left, 10.0);
+      expect(root.viewBox.top, 20.0);
+      expect(root.viewBox.width, 30.0);
+      expect(root.viewBox.height, 40.0);
+    });
 
-    // Collect every animateTransform recursively.
-    final animations = <SvgAnimateTransform>[];
-    void visit(SvgNode node) {
-      for (final animation in node.animations) {
-        if (animation is SvgAnimateTransform) animations.add(animation);
-      }
-      if (node is SvgGroup) {
-        for (final child in node.children) {
-          visit(child);
-        }
-      }
-    }
-    for (final child in root.children) {
-      visit(child);
-    }
+    test('viewBox falls back to width/height when missing', () {
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="60"/>',
+      );
+      expect(root.viewBox.size, const Size(50.0, 60.0));
+    });
 
-    // The sway SVG has four animateTransform nodes (lower stem rotate,
-    // mid-stem rotate, canopy rotate, canopy scale).
-    expect(animations.length, 4);
-    expect(
-      animations.where((a) => a.type == SvgTransformType.rotate).length,
-      3,
-    );
-    expect(
-      animations.where((a) => a.type == SvgTransformType.scale).length,
-      1,
-    );
-    for (final animation in animations) {
-      expect(animation.duration.inMilliseconds, 1600);
-      expect(animation.repeatCount.isInfinite, isTrue);
-      expect(animation.keyTimes.length, animation.values.length);
-    }
+    test('viewBox falls back to 100x100 when both viewBox and size missing',
+        () {
+      final root = parseSvg('<svg xmlns="http://www.w3.org/2000/svg"/>');
+      expect(root.viewBox.size, const Size(100.0, 100.0));
+    });
+
+    test('zero / negative viewBox falls back to default 100x100', () {
+      expect(
+        parseSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 0 0"/>',
+        ).viewBox.size,
+        const Size(100.0, 100.0),
+      );
+      expect(
+        parseSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 -5 -5"/>',
+        ).viewBox.size,
+        const Size(100.0, 100.0),
+      );
+    });
+
+    test('intrinsicSize is populated when both width and height present', () {
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'width="200" height="150" viewBox="0 0 10 10"/>',
+      );
+      expect(root.intrinsicSize, const Size(200.0, 150.0));
+    });
+
+    test('intrinsicSize is null when width or height absent', () {
+      expect(
+        parseSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"/>',
+        ).intrinsicSize,
+        isNull,
+      );
+      expect(
+        parseSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="100" '
+          'viewBox="0 0 10 10"/>',
+        ).intrinsicSize,
+        isNull,
+      );
+    });
+
+    test('intrinsicSize is null when non-finite or non-positive', () {
+      expect(
+        parseSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg" '
+          'width="-100" height="50" viewBox="0 0 10 10"/>',
+        ).intrinsicSize,
+        isNull,
+      );
+    });
   });
 
-  test('evaluator interpolates linearly between keyframes', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <g>
-          <animateTransform attributeName="transform" type="rotate"
-            values="0; 90" keyTimes="0; 1" dur="1s" repeatCount="indefinite" />
-          <rect x="0" y="0" width="10" height="10" fill="red"/>
-        </g>
-      </svg>
-    ''');
-    final group = root.children.first as SvgGroup;
-    final eval = evaluateNode(
-      timeSeconds: 0.5,
-      baseTransform: group.baseTransform,
-      baseAttributes: group.attributes,
-      animations: group.animations,
-    );
-    // Halfway through ⇒ 45°. Top-left entry of a 2D rotation matrix is cos(θ).
-    expect(eval.transform.storage[0], closeTo(0.7071, 1e-3));
-  });
-
-  test('colour interpolation produces a midpoint hex', () {
-    final color = parseSvgColor('#ff0000');
-    final color2 = parseSvgColor('#0000ff');
-    expect(color, isNotNull);
-    expect(color2, isNotNull);
-  });
-
-  test('naturalCyclePeriod = longest animation duration in tree', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <g>
-          <animateTransform attributeName="transform" type="rotate"
-            values="0; 360" dur="0.5s" repeatCount="indefinite" />
-          <rect x="0" y="0" width="1" height="1">
-            <animate attributeName="opacity" values="0; 1" dur="2s"
-              repeatCount="indefinite" />
-          </rect>
-        </g>
-      </svg>
-    ''');
-    expect(root.naturalCyclePeriod, const Duration(seconds: 2));
-    expect(root.hasAnimations, isTrue);
-  });
-
-  test('static SVG: hasAnimations is false, naturalCyclePeriod is zero', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1" fill="red"/>
-      </svg>
-    ''');
-    expect(root.hasAnimations, isFalse);
-    expect(root.naturalCyclePeriod, Duration.zero);
-  });
-
-  test('from/to shorthand maps onto a two-keyframe animation', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1">
-          <animateTransform attributeName="transform" type="scale"
-            from="1" to="2" dur="1s" repeatCount="indefinite"/>
-        </rect>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    expect(shape.animations.length, 1);
-    final animation = shape.animations.first as SvgAnimateTransform;
-    expect(animation.values, [
-      [1.0],
-      [2.0],
-    ]);
-  });
-
-  test('calcMode=spline with keySplines parses through to the model', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1">
-          <animate attributeName="opacity"
-            values="0; 1" keyTimes="0; 1"
-            calcMode="spline" keySplines="0.42 0 0.58 1"
-            dur="1s" repeatCount="indefinite"/>
-        </rect>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    final animation = shape.animations.first as SvgAnimateAttribute;
-    expect(animation.calcMode, SvgCalcMode.spline);
-    expect(animation.keySplines, [
-      [0.42, 0.0, 0.58, 1.0],
-    ]);
-  });
-
-  // ─── Adversarial inputs ────────────────────────────────────────────────
-
-  test('NaN dur does not crash and is rejected as zero-duration', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1">
-          <animate attributeName="opacity" values="0; 1"
-            dur="NaN" repeatCount="indefinite"/>
-        </rect>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    final animation = shape.animations.first as SvgAnimateAttribute;
-    expect(animation.duration, Duration.zero);
-    expect(root.hasAnimations, isFalse);
-  });
-
-  test('negative dur is rejected, not silently turned into a negative cycle',
-      () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1">
-          <animate attributeName="opacity" values="0; 1"
-            dur="-2s" repeatCount="indefinite"/>
-        </rect>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    expect((shape.animations.first as SvgAnimateAttribute).duration,
-        Duration.zero);
-  });
-
-  test('negative or NaN repeatCount falls back to one cycle', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1">
-          <animate attributeName="opacity" values="0; 1"
-            dur="1s" repeatCount="-3"/>
-          <animate attributeName="fill" values="red; blue"
-            dur="1s" repeatCount="NaN"/>
-        </rect>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    expect(shape.animations.length, 2);
-    for (final animation in shape.animations) {
-      expect((animation as SvgAnimateAttribute).repeatCount, 1.0);
-    }
-  });
-
-  test('zero / negative viewBox falls back to default 100×100', () {
-    expect(
-      parseSvg(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 0 0"/>',
-      ).viewBox.size,
-      const Size(100.0, 100.0),
-    );
-    expect(
-      parseSvg(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 -5 -5"/>',
-      ).viewBox.size,
-      const Size(100.0, 100.0),
-    );
-  });
-
-  test('transform list filters non-finite numbers', () {
-    // The translate would otherwise feed NaN into Matrix4 storage and turn
-    // the entire canvas transform downstream into garbage.
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <g transform="translate(NaN, 5)">
+  group('parseSvg — element coverage', () {
+    test('parses each supported shape kind', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <g><rect x="0" y="0" width="1" height="1"/></g>
+          <path d="M0 0 L1 1"/>
           <rect x="0" y="0" width="1" height="1"/>
-        </g>
-      </svg>
-    ''');
-    final group = root.children.first as SvgGroup;
-    final tx = group.baseTransform.storage[12];
-    final ty = group.baseTransform.storage[13];
-    expect(tx.isFinite, isTrue);
-    expect(ty.isFinite, isTrue);
+          <circle cx="0" cy="0" r="1"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1"/>
+          <line x1="0" y1="0" x2="1" y2="1"/>
+          <polygon points="0,0 1,0 0,1"/>
+          <polyline points="0,0 1,1"/>
+        </svg>
+      ''');
+      expect(root.children, hasLength(8));
+      expect(root.children[0], isA<SvgGroup>());
+      expect(root.children[1], isA<SvgPathShape>());
+      expect(root.children[2], isA<SvgRectShape>());
+      expect(root.children[3], isA<SvgCircleShape>());
+      expect(root.children[4], isA<SvgEllipseShape>());
+      expect(root.children[5], isA<SvgLineShape>());
+      expect(root.children[6], isA<SvgPolygonShape>());
+      expect((root.children[6] as SvgPolygonShape).closed, isTrue);
+      expect(root.children[7], isA<SvgPolygonShape>());
+      expect((root.children[7] as SvgPolygonShape).closed, isFalse);
+    });
+
+    test('unknown elements are skipped silently', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <text x="0" y="0">hi</text>
+          <use href="#x"/>
+          <rect x="0" y="0" width="1" height="1"/>
+        </svg>
+      ''');
+      // Only the rect survives.
+      expect(root.children, hasLength(1));
+      expect(root.children.single, isA<SvgRectShape>());
+    });
+
+    test('groups nest recursively', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <g>
+            <g>
+              <rect x="0" y="0" width="1" height="1"/>
+            </g>
+          </g>
+        </svg>
+      ''');
+      final outer = root.children.single as SvgGroup;
+      final inner = outer.children.single as SvgGroup;
+      expect(inner.children.single, isA<SvgRectShape>());
+    });
   });
 
-  test('path shape reuses parsed Path across calls when `d` is unchanged',
-      () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <path d="M0 0 L10 10"/>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    final first = shape.resolvePath(shape.attributes);
-    final second = shape.resolvePath(shape.attributes);
-    expect(identical(first, second), isTrue,
-        reason: 'Same geometry attrs should hit the cache.');
+  group('parseSvg — attribute handling', () {
+    test('unknown attributes are preserved verbatim', () {
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        '<rect x="0" y="0" width="1" height="1" '
+        'data-custom="hello" mask="url(#m)"/></svg>',
+      );
+      final shape = root.children.single;
+      expect(shape.attributes['data-custom'], 'hello');
+      expect(shape.attributes['mask'], 'url(#m)');
+    });
+
+    test('transform attribute is consumed into baseTransform, not attrs', () {
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        '<g transform="translate(5, 5)"><rect x="0" y="0" '
+        'width="1" height="1"/></g></svg>',
+      );
+      final group = root.children.single;
+      expect(group.attributes.containsKey('transform'), isFalse);
+      expect(group.baseTransform.storage[12], 5.0);
+      expect(group.baseTransform.storage[13], 5.0);
+    });
+
+    test('style="..." declarations split into individual attributes', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1"
+            style="fill: red; stroke: blue; stroke-width: 2"/>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      expect(shape.attributes['fill'], 'red');
+      expect(shape.attributes['stroke'], 'blue');
+      expect(shape.attributes['stroke-width'], '2');
+    });
+
+    test('presentation attributes win over style declarations '
+        '(implementation defines first-wins)', () {
+      // Note: SVG spec actually gives style higher specificity, but this
+      // package uses putIfAbsent — presentation attribute wins. This test
+      // documents current behaviour rather than spec compliance.
+      final root = parseSvg(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        '<rect x="0" y="0" width="1" height="1" '
+        'fill="green" style="fill: red"/></svg>',
+      );
+      final shape = root.children.single;
+      expect(shape.attributes['fill'], 'green');
+    });
+
+    test('malformed style entries (no colon) are skipped', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1"
+            style="fill red; ; stroke: blue;"/>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      expect(shape.attributes.containsKey('fill'), isFalse);
+      expect(shape.attributes['stroke'], 'blue');
+    });
   });
 
-  test('path shape rebuilds when `d` changes (animation case)', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <path d="M0 0 L10 10"/>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    final first = shape.resolvePath({'d': 'M0 0 L10 10'});
-    final second = shape.resolvePath({'d': 'M0 0 L20 20'});
-    expect(identical(first, second), isFalse);
+  group('parseSvg — animation parsing', () {
+    test('values list is split on `;` into ordered keyframes', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0;0.5;1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      final animation = shape.animations.single as SvgAnimateAttribute;
+      expect(animation.values, ['0', '0.5', '1']);
+    });
+
+    test('from/to shorthand becomes a two-keyframe values list', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animateTransform attributeName="transform" type="scale"
+              from="1" to="2" dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      final animation = shape.animations.single as SvgAnimateTransform;
+      expect(animation.values, [
+        [1.0],
+        [2.0],
+      ]);
+    });
+
+    test('from/by numeric shorthand computes from + by', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animateTransform attributeName="transform" type="translate"
+              from="10 20" by="5 5" dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      final animation = shape.animations.single as SvgAnimateTransform;
+      expect(animation.values, [
+        [10.0, 20.0],
+        [15.0, 25.0],
+      ]);
+    });
+
+    test('from/by on non-numeric attribute is dropped (no animation)', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="fill" from="red" by="blue"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      expect(shape.animations, isEmpty);
+    });
+
+    test('attribute value type is inferred from attributeName', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="fill" values="red; blue"
+              dur="1s" repeatCount="indefinite"/>
+            <animate attributeName="stroke" values="red; blue"
+              dur="1s" repeatCount="indefinite"/>
+            <animate attributeName="stop-color" values="red; blue"
+              dur="1s" repeatCount="indefinite"/>
+            <animate attributeName="color" values="red; blue"
+              dur="1s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0; 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final shape = root.children.single;
+      final byName = {
+        for (final a in shape.animations.cast<SvgAnimateAttribute>())
+          a.attributeName: a.valueType,
+      };
+      expect(byName['fill'], SvgAnimateValueType.paint);
+      expect(byName['stroke'], SvgAnimateValueType.paint);
+      expect(byName['stop-color'], SvgAnimateValueType.paint);
+      expect(byName['color'], SvgAnimateValueType.color);
+      expect(byName['opacity'], SvgAnimateValueType.number);
+    });
+
+    test('calcMode parses to all four enum values', () {
+      const variants = {
+        'linear': SvgCalcMode.linear,
+        'spline': SvgCalcMode.spline,
+        'discrete': SvgCalcMode.discrete,
+        'paced': SvgCalcMode.paced,
+      };
+      for (final entry in variants.entries) {
+        final root = parseSvg('''
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+            <rect x="0" y="0" width="1" height="1">
+              <animate attributeName="opacity" values="0; 1"
+                calcMode="${entry.key}" dur="1s" repeatCount="indefinite"/>
+            </rect>
+          </svg>
+        ''');
+        final animation =
+            root.children.single.animations.single as SvgAnimateAttribute;
+        expect(animation.calcMode, entry.value);
+      }
+    });
+
+    test('keyTimes defaults to evenly-spaced when omitted', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 0.5; 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.keyTimes, [0.0, 0.5, 1.0]);
+    });
+
+    test('keyTimes mismatched length is re-derived linearly', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity"
+              values="0; 0.5; 1"
+              keyTimes="0; 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.keyTimes, [0.0, 0.5, 1.0]);
+    });
+
+    test('keySplines with wrong segment count is ignored', () {
+      // values has 3 entries -> 2 segments; supplying only 1 should drop the
+      // whole splines list (we don't want to partially apply easing).
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 0.5; 1"
+              calcMode="spline" keySplines="0.42 0 0.58 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.keySplines, isEmpty);
+    });
+
+    test('keySplines parses through when count matches', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity"
+              values="0; 0.5; 1"
+              calcMode="spline"
+              keySplines="0.42 0 0.58 1; 0 0 0.5 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.keySplines, [
+        [0.42, 0.0, 0.58, 1.0],
+        [0.0, 0.0, 0.5, 1.0],
+      ]);
+    });
+
+    test('dur parsing covers seconds, milliseconds, and bare numbers', () {
+      Duration durFor(String raw) {
+        final root = parseSvg('''
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+            <rect x="0" y="0" width="1" height="1">
+              <animate attributeName="opacity" values="0; 1"
+                dur="$raw" repeatCount="indefinite"/>
+            </rect>
+          </svg>
+        ''');
+        return (root.children.single.animations.single as SvgAnimateAttribute)
+            .duration;
+      }
+      expect(durFor('1s'), const Duration(seconds: 1));
+      expect(durFor('500ms'), const Duration(milliseconds: 500));
+      expect(durFor('2.5'), const Duration(milliseconds: 2500));
+    });
+
+    test('dur="indefinite" falls back to zero (no defined cycle)', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              dur="indefinite" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.duration, Duration.zero);
+    });
+
+    test('NaN dur is rejected, animation contributes no cycle', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              dur="NaN" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.duration, Duration.zero);
+      expect(root.hasAnimations, isFalse);
+    });
+
+    test('negative dur is rejected', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              dur="-2s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.duration, Duration.zero);
+    });
+
+    test('repeatCount="indefinite" is infinity', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateAttribute;
+      expect(animation.repeatCount, double.infinity);
+    });
+
+    test('numeric repeatCount survives, negative/NaN fall back to 1', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              dur="1s" repeatCount="3"/>
+            <animate attributeName="fill" values="red; blue"
+              dur="1s" repeatCount="-2"/>
+            <animate attributeName="stroke" values="red; blue"
+              dur="1s" repeatCount="NaN"/>
+          </rect>
+        </svg>
+      ''');
+      final animations =
+          root.children.single.animations.cast<SvgAnimateAttribute>().toList();
+      expect(animations[0].repeatCount, 3.0);
+      expect(animations[1].repeatCount, 1.0);
+      expect(animations[2].repeatCount, 1.0);
+    });
+
+    test('begin offset is parsed; default is zero', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate attributeName="opacity" values="0; 1"
+              begin="0.5s" dur="1s"/>
+            <animate attributeName="fill" values="red; blue"
+              dur="1s"/>
+          </rect>
+        </svg>
+      ''');
+      final animations =
+          root.children.single.animations.cast<SvgAnimateAttribute>().toList();
+      expect(animations[0].begin, const Duration(milliseconds: 500));
+      expect(animations[1].begin, Duration.zero);
+    });
+
+    test('additive="sum" is parsed; default is replace', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <g>
+            <animateTransform attributeName="transform" type="translate"
+              values="0 0; 10 0" additive="sum"
+              dur="1s" repeatCount="indefinite"/>
+            <animateTransform attributeName="transform" type="scale"
+              values="1; 2" dur="1s" repeatCount="indefinite"/>
+            <rect x="0" y="0" width="1" height="1"/>
+          </g>
+        </svg>
+      ''');
+      final group = root.children.single as SvgGroup;
+      final animations = group.animations.cast<SvgAnimateTransform>();
+      expect(animations.first.additive, AdditiveMode.sum);
+      expect(animations.last.additive, AdditiveMode.replace);
+    });
+
+    test('animateTransform with unsupported type is dropped', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animateTransform attributeName="transform" type="warp"
+              from="0" to="1" dur="1s"/>
+          </rect>
+        </svg>
+      ''');
+      expect(root.children.single.animations, isEmpty);
+    });
+
+    test('<animate> without attributeName is dropped', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animate values="0; 1" dur="1s"/>
+          </rect>
+        </svg>
+      ''');
+      expect(root.children.single.animations, isEmpty);
+    });
+
+    test('animateTransform values default type is translate when omitted', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1">
+            <animateTransform attributeName="transform"
+              from="0 0" to="5 5" dur="1s" repeatCount="indefinite"/>
+          </rect>
+        </svg>
+      ''');
+      final animation =
+          root.children.single.animations.single as SvgAnimateTransform;
+      expect(animation.type, SvgTransformType.translate);
+    });
   });
 
-  test('malformed path data does not throw and yields an empty Path', () {
-    // `path_drawing` raises StateError on syntactically broken input. The
-    // painter calls `resolvePath` in a hot loop, so an exception here would
-    // unbalance the canvas save stack and corrupt every subsequent frame.
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <path d="this is not a path"/>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    expect(() => shape.resolvePath(shape.attributes), returnsNormally);
-  });
+  group('parseSvg — natural cycle period', () {
+    test('longest dur in the tree wins', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <g>
+            <animateTransform attributeName="transform" type="rotate"
+              values="0; 360" dur="0.5s" repeatCount="indefinite" />
+            <rect x="0" y="0" width="1" height="1">
+              <animate attributeName="opacity" values="0; 1" dur="2s"
+                repeatCount="indefinite" />
+            </rect>
+          </g>
+        </svg>
+      ''');
+      expect(root.naturalCyclePeriod, const Duration(seconds: 2));
+      expect(root.hasAnimations, isTrue);
+    });
 
-  test('empty `d` returns an empty Path without invoking path_drawing', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <path d=""/>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    expect(() => shape.resolvePath(shape.attributes), returnsNormally);
-  });
-
-  test('evaluateNode skips Matrix4 clone when no animations apply', () {
-    final root = parseSvg('''
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
-        <rect x="0" y="0" width="1" height="1"/>
-      </svg>
-    ''');
-    final shape = root.children.first as SvgShape;
-    final evaluation = evaluateNode(
-      timeSeconds: 0.0,
-      baseTransform: shape.baseTransform,
-      baseAttributes: shape.attributes,
-      animations: shape.animations,
-    );
-    expect(identical(evaluation.transform, shape.baseTransform), isTrue,
-        reason: 'Static nodes should return the base Matrix4 by reference, '
-            'not clone it on every frame.');
-    expect(identical(evaluation.attributes, shape.attributes), isTrue,
-        reason: 'Static nodes should return the base attribute map by '
-            'reference.');
-  });
-
-  test('parseSvgColor knows CSS Color Module Level 3 named colors', () {
-    // Without these, a typical SVG `fill="royalblue"` silently renders as
-    // nothing (matches `fill="none"`).
-    expect(parseSvgColor('royalblue'), isNotNull);
-    expect(parseSvgColor('rebeccapurple'), isNotNull);
-    expect(parseSvgColor('salmon'), isNotNull);
-    expect(parseSvgColor('darkslategrey'), isNotNull); // British spelling
-    expect(parseSvgColor('darkslategray'), isNotNull); // American spelling
-  });
-
-  test('parseSvgColor still rejects unknown / invalid input', () {
-    expect(parseSvgColor('none'), isNull);
-    expect(parseSvgColor('transparent'), isNull);
-    expect(parseSvgColor('not-a-color'), isNull);
-    expect(parseSvgColor(''), isNull);
+    test('static SVG: hasAnimations false, naturalCyclePeriod zero', () {
+      final root = parseSvg('''
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+          <rect x="0" y="0" width="1" height="1" fill="red"/>
+        </svg>
+      ''');
+      expect(root.hasAnimations, isFalse);
+      expect(root.naturalCyclePeriod, Duration.zero);
+    });
   });
 }

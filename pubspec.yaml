@@ -13,28 +13,28 @@
 
 name: animated_svg
 homepage: https://dev-cetera.com/
+repository: https://github.com/dev-cetera/animated_svg
 funding:
   - https://www.buymeacoffee.com/dev_cetera
   - https://www.patreon.com/c/robelator
   - https://github.com/sponsors/robelator
 description: "Render SMIL-animated SVGs in Flutter with programmatic pause / resume / speed control."
-version: 0.0.1
+version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: 3.11.5
-  flutter: 3.41.9
+  sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  xml: 6.6.1
-  path_drawing: 1.0.1
-  vector_math: 2.2.0
-  http: 1.6.0
+  xml: ^6.6.1
+  path_drawing: ^1.0.1
+  vector_math: ^2.2.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: 6.0.0
+  flutter_lints: ^6.0.0

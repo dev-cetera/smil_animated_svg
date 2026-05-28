@@ -7,8 +7,10 @@
 ///     (fill, stroke, opacity, fill-opacity, stroke-opacity, stroke-width,
 ///     plus geometry attrs like cx, cy, r, x, y, width, height).
 ///
-/// Easing is linear only. `calcMode`, `keySplines`, `from/to/by`, and
-/// `<animateMotion>` are unsupported.
+/// Keyframes drive interpolation via `values` (preferred) or `from/to/by`.
+/// Easing supports `calcMode="linear"` (default), `"spline"` (with cubic-bezier
+/// `keySplines`), and `"discrete"`. `<animateMotion>` and `<set>` are
+/// unsupported.
 library;
 
 enum SvgTransformType { translate, rotate, scale, skewX, skewY, matrix }
