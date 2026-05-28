@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:animated_svg/animated_svg.dart';
+import 'package:smil_animated_svg/smil_animated_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,4 +1,4 @@
-# animated_svg_example
+# smil_animated_svg_example
 
 A new Flutter project.
 

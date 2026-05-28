@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This package is **independent** of the umbrella workspace's `df_safer_dart` stack. It uses plain Flutter idioms (no `Option`/`Result`/`Resolvable`, no `_src.g.dart` barrels, no `_common.dart`, no `df_safer_dart_lints`). The parent workspace's `CLAUDE.md` describes patterns that do **not** apply here — defer to this file inside `packages/animated_svg/`.
+This package is **independent** of the umbrella workspace's `df_safer_dart` stack. It uses plain Flutter idioms (no `Option`/`Result`/`Resolvable`, no `_src.g.dart` barrels, no `_common.dart`, no `df_safer_dart_lints`). The parent workspace's `CLAUDE.md` describes patterns that do **not** apply here — defer to this file inside `packages/smil_animated_svg/` (the directory may still be named `animated_svg/` locally until renamed).
 
 ## What this package does
 
@@ -21,7 +21,7 @@ Three layers, each in its own directory:
 
 ```
 lib/
-  animated_svg.dart           # Public barrel (hand-written, not generated)
+  smil_animated_svg.dart      # Public barrel (hand-written, not generated)
   src/
     animated_svg_widget.dart  # AnimatedSvg (StatefulWidget + TickerProviderStateMixin)
     svg_frame.dart            # SvgFrame + shared buildSvgCustomPaint()
@@ -57,7 +57,7 @@ Data flow per frame: `AnimationController.value` → `super(repaint: animation)`
 Uses **Flutter** lints (`include: package:flutter_lints/recommended.yaml`), not the umbrella workspace's strict Dart config. `custom_lint` plugin is declared but no `df_safer_dart_lints` dependency exists here, so it's effectively a no-op. Key knobs:
 
 - `strict-casts`, `strict-inference`, `strict-raw-types` all on.
-- `prefer_relative_imports: error` — never use `package:animated_svg/...` inside `lib/`.
+- `prefer_relative_imports: error` — never use `package:smil_animated_svg/...` inside `lib/`.
 - `require_trailing_commas: true`, `prefer_single_quotes: true`, `omit_local_variable_types: true`.
 - `formatter.trailing_commas: preserve`.
 
@@ -65,7 +65,7 @@ Every Dart file starts with the `▓▓▓` license banner — preserve it on ed
 
 ## Common commands
 
-Run inside `packages/animated_svg/`:
+Run inside the package directory (currently `packages/animated_svg/` on disk; will become `packages/smil_animated_svg/` once you rename the workspace folder):
 
 ```sh
 flutter pub get
@@ -97,4 +97,4 @@ This package does **not** use the umbrella workspace's `+message` / `++message` 
 3. `prod.yml` runs tests, bumps the version (if not already bumped), commits `ci: ...`, tags `vX.Y.Z`.
 4. `publish.yml` triggers on the tag and pushes to pub.dev.
 
-`publish.yml` runs `dart pub publish --force` directly — it does **not** strip `publish_to` from `pubspec.yaml`. The `publish_to: none` guard is therefore load-bearing right now: it blocks accidental publication while the package name conflict on pub.dev is resolved (an unrelated `animated_svg` already occupies that slot at v2.1.0). To enable real publishing, either rename the package or pre-strip `publish_to` in CI before `dart pub publish` runs.
+`publish.yml` runs `dart pub publish --force` directly — it does **not** strip `publish_to` from `pubspec.yaml`. The `publish_to: none` guard is therefore load-bearing right now: it blocks accidental publication until the first manual sanity-check via `dart pub publish --dry-run` clears. To enable real publishing, drop `publish_to: none` from `pubspec.yaml` or have CI strip it before `dart pub publish` runs.

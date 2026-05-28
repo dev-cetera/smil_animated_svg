@@ -1,11 +1,11 @@
-[![pub](https://img.shields.io/pub/v/animated_svg.svg)](https://pub.dev/packages/animated_svg)
-[![tag](https://img.shields.io/badge/Tag-v0.1.0-purple?logo=github)](https://github.com/dev-cetera/animated_svg/tree/v0.1.0)
+[![pub](https://img.shields.io/pub/v/smil_animated_svg.svg)](https://pub.dev/packages/smil_animated_svg)
+[![tag](https://img.shields.io/badge/Tag-v0.1.0-purple?logo=github)](https://github.com/dev-cetera/smil_animated_svg/tree/v0.1.0)
 [![buymeacoffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/dev_cetera)
 [![sponsor](https://img.shields.io/badge/Sponsor-grey?logo=github-sponsors&logoColor=pink)](https://github.com/sponsors/dev-cetera)
 [![patreon](https://img.shields.io/badge/Patreon-grey?logo=patreon)](https://www.patreon.com/robelator)
 [![discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/gEQ8y2nfyX)
 [![instagram](https://img.shields.io/badge/Instagram-E4405F?logo=instagram&logoColor=white)](https://www.instagram.com/dev_cetera/)
-[![license](https://img.shields.io/badge/License-MIT-blue.svg)](https://raw.githubusercontent.com/dev-cetera/animated_svg/main/LICENSE)
+[![license](https://img.shields.io/badge/License-MIT-blue.svg)](https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/LICENSE)
 
 ---
 
@@ -14,6 +14,15 @@
 ## Summary
 
 Render **SMIL-animated SVGs** in Flutter with programmatic pause / resume / speed / colour control — no native plugins, no platform channels, no external rasteriser.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/example/assets/spinner.svg" alt="spinner" width="80"/>
+  <img src="https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/example/assets/pulse.svg" alt="pulse" width="80"/>
+  <img src="https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/example/assets/color_wave.svg" alt="color wave" width="80"/>
+  <img src="https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/example/assets/bounce.svg" alt="bounce" width="80"/>
+</p>
+
+*(GitHub and pub.dev both stream the SVGs above with their SMIL animations intact — so the strip above plays live, no GIF/MP4 needed.)*
 
 Two widgets ship in the box:
 
@@ -29,13 +38,13 @@ Supported SVG subset: `<g>`, `<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line
 ## Installation
 
 ```sh
-flutter pub add animated_svg
+flutter pub add smil_animated_svg
 ```
 
 ## Usage
 
 ```dart
-import 'package:animated_svg/animated_svg.dart';
+import 'package:smil_animated_svg/smil_animated_svg.dart';
 import 'package:flutter/material.dart';
 
 class Loader extends StatelessWidget {
@@ -112,7 +121,7 @@ Repeated mounts of the same `assetPath` or `url` reuse a parsed `SvgRoot` (32-en
 
 ---
 
-🔍 For more information, refer to the [API reference](https://pub.dev/documentation/animated_svg/).
+🔍 For more information, refer to the [API reference](https://pub.dev/documentation/smil_animated_svg/).
 
 ---
 
@@ -140,4 +149,4 @@ If you're enjoying this package and find it valuable, consider showing your appr
 
 ## LICENSE
 
-This project is released under the [MIT License](https://raw.githubusercontent.com/dev-cetera/animated_svg/main/LICENSE). See [LICENSE](https://raw.githubusercontent.com/dev-cetera/animated_svg/main/LICENSE) for more information.
+This project is released under the [MIT License](https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/LICENSE). See [LICENSE](https://raw.githubusercontent.com/dev-cetera/smil_animated_svg/main/LICENSE) for more information.

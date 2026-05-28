@@ -1,5 +1,5 @@
-import 'package:animated_svg/animated_svg.dart';
-import 'package:animated_svg/src/render/evaluator.dart';
+import 'package:smil_animated_svg/smil_animated_svg.dart';
+import 'package:smil_animated_svg/src/render/evaluator.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 

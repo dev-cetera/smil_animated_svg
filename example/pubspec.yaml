@@ -1,5 +1,5 @@
-name: animated_svg_example
-description: Demo for the animated_svg package.
+name: smil_animated_svg_example
+description: Demo for the smil_animated_svg package.
 publish_to: none
 version: 0.0.1
 
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  animated_svg:
+  smil_animated_svg:
     path: ..
 
 dev_dependencies:

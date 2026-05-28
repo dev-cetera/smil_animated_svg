@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:animated_svg/src/parser/transform_parser.dart';
+import 'package:smil_animated_svg/src/parser/transform_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
