@@ -92,6 +92,22 @@ AnimatedSvg.asset(
 
 Tween values are evaluated at the curved controller value during playback, or at the frozen `position` when one is supplied.
 
+### Error and placeholder builders
+
+```dart
+SvgFrame.network(
+  'https://example.com/icon.svg',
+  placeholderBuilder: (context) => const CircularProgressIndicator(),
+  errorBuilder: (context, error, stack) => const Icon(Icons.broken_image),
+);
+```
+
+The signatures match `Image.errorBuilder` / `Image.frameBuilder` conventions. With no `errorBuilder`, a failed load collapses to an empty `SizedBox` instead of throwing — bad SVGs never take a frame down.
+
+### Parse cache
+
+Repeated mounts of the same `assetPath` or `url` reuse a parsed `SvgRoot` (32-entry LRU, hot-reload-aware). Call `SvgFrame.clearCache()` to drop it — useful in tests.
+
 <!-- END _README_CONTENT -->
 
 ---
