@@ -179,7 +179,8 @@ void main() {
       expect(shape.attributes['stroke-width'], '2');
     });
 
-    test('presentation attributes win over style declarations '
+    test(
+        'presentation attributes win over style declarations '
         '(implementation defines first-wins)', () {
       // Note: SVG spec actually gives style higher specificity, but this
       // package uses putIfAbsent — presentation attribute wins. This test
@@ -399,6 +400,7 @@ void main() {
         return (root.children.single.animations.single as SvgAnimateAttribute)
             .duration;
       }
+
       expect(durFor('1s'), const Duration(seconds: 1));
       expect(durFor('500ms'), const Duration(milliseconds: 500));
       expect(durFor('2.5'), const Duration(milliseconds: 2500));

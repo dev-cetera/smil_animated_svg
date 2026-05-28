@@ -45,6 +45,7 @@ class SvgRoot {
         }
       }
     }
+
     for (final child in children) {
       visit(child);
     }
@@ -261,8 +262,7 @@ class SvgPolygonShape extends SvgShape {
   final bool closed;
 
   @override
-  String pathCacheKey(Map<String, String> live) =>
-      '${live['points']}|$closed';
+  String pathCacheKey(Map<String, String> live) => '${live['points']}|$closed';
 
   @override
   Path buildPath(Map<String, String> live) {

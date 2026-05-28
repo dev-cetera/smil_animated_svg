@@ -174,7 +174,8 @@ class AnimatedSvgPainter extends CustomPainter {
         canvas.transform(evaluation.transform.storage);
       }
 
-      final merged = _mergeAttributes(inheritedAttributes, evaluation.attributes);
+      final merged =
+          _mergeAttributes(inheritedAttributes, evaluation.attributes);
 
       if (node is SvgGroup) {
         final groupOpacity = _opacityOf(merged);
@@ -231,8 +232,7 @@ class AnimatedSvgPainter extends CustomPainter {
     final stroke = parseSvgColor(live['stroke'] ?? 'none');
     if (stroke != null) {
       final strokeOpacity = _parseClampedOpacity(live['stroke-opacity']);
-      final strokeWidth =
-          double.tryParse(live['stroke-width'] ?? '') ?? 1.0;
+      final strokeWidth = double.tryParse(live['stroke-width'] ?? '') ?? 1.0;
       final dashPattern = _parseLengthList(live['stroke-dasharray']);
       final dashOffset =
           double.tryParse(live['stroke-dashoffset'] ?? '') ?? 0.0;
@@ -272,11 +272,10 @@ class AnimatedSvgPainter extends CustomPainter {
         // Reject non-finite — NaN in a dash entry causes `_dashedPath` to
         // never terminate (NaN comparisons are always false).
         .map((t) {
-          final value = double.tryParse(t);
-          if (value == null || !value.isFinite || value < 0.0) return 0.0;
-          return value;
-        })
-        .toList(growable: false);
+      final value = double.tryParse(t);
+      if (value == null || !value.isFinite || value < 0.0) return 0.0;
+      return value;
+    }).toList(growable: false);
   }
 
   /// Hard cap on dash iterations per path metric. Pathological patterns

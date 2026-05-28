@@ -394,8 +394,7 @@ Widget buildSvgCustomPaint({
   // [AlignmentDirectional.resolve] requires a non-null direction; default
   // to LTR when no Directionality ancestor exists (e.g. WidgetsApp before
   // MaterialApp / tests).
-  final textDirection =
-      Directionality.maybeOf(context) ?? TextDirection.ltr;
+  final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
 
   final cyclePeriod = root.naturalCyclePeriod;
   final cycleSeconds = cyclePeriod.inMicroseconds / 1e6;

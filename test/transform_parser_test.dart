@@ -123,12 +123,16 @@ void main() {
     test('handles each documented type', () {
       expect(buildAnimatedTransform('translate', [3.0, 4.0]).storage[12], 3.0);
       expect(buildAnimatedTransform('scale', [2.0]).storage[0], 2.0);
-      expect(buildAnimatedTransform('rotate', [180.0]).storage[0],
-          closeTo(-1.0, 1e-9),);
+      expect(
+        buildAnimatedTransform('rotate', [180.0]).storage[0],
+        closeTo(-1.0, 1e-9),
+      );
       expect(buildAnimatedTransform('skewX', [0.0]).storage[4], 0.0);
       expect(buildAnimatedTransform('skewY', [0.0]).storage[1], 0.0);
-      expect(buildAnimatedTransform('matrix', [1, 2, 3, 4, 5, 6]).storage[12],
-          5.0,);
+      expect(
+        buildAnimatedTransform('matrix', [1, 2, 3, 4, 5, 6]).storage[12],
+        5.0,
+      );
     });
 
     test('matrix with <6 args is identity (no partial application)', () {

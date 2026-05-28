@@ -223,8 +223,10 @@ void main() {
           </rect>
         </svg>
       ''');
-      expect(identical(root.naturalCyclePeriod, root.naturalCyclePeriod),
-          isTrue,);
+      expect(
+        identical(root.naturalCyclePeriod, root.naturalCyclePeriod),
+        isTrue,
+      );
     });
 
     test('hasAnimations distinguishes static vs animated SVGs', () {

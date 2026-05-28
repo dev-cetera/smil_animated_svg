@@ -226,7 +226,8 @@ void main() {
   });
 
   group('AnimatedSvg.string — tweens', () {
-    testWidgets('colorTween + position evaluates at the fixed position '
+    testWidgets(
+        'colorTween + position evaluates at the fixed position '
         '(no controller required)', (tester) async {
       // Regression: _buildAnimatingChild used to null out tweens whenever
       // useAnimation was false, silently breaking the documented
@@ -373,9 +374,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.byWidgetPredicate((widget) =>
-            widget is Semantics &&
-            widget.properties.label == 'animated svg',),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == 'animated svg',
+        ),
         findsOneWidget,
       );
     });
@@ -391,9 +393,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.byWidgetPredicate((widget) =>
-            widget is Semantics &&
-            widget.properties.label == 'hidden',),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == 'hidden',
+        ),
         findsNothing,
       );
     });

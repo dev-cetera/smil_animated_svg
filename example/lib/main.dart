@@ -164,8 +164,7 @@ class _HomeState extends State<_Home> {
 
   Widget _renderActive() {
     final asset = samples[sampleIndex].asset;
-    final scaleTransform =
-        Matrix4.diagonal3Values(outerScale, outerScale, 1.0);
+    final scaleTransform = Matrix4.diagonal3Values(outerScale, outerScale, 1.0);
     final activeFilter = filters[filterIndex].filter;
 
     if (useFrameMode) {

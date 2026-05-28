@@ -179,7 +179,8 @@ SvgAnimateTransform? _parseAnimateTransform(XmlElement element) {
   return SvgAnimateTransform(
     duration: _parseDuration(element.getAttribute('dur')),
     repeatCount: _parseRepeatCount(element.getAttribute('repeatCount')),
-    begin: _parseDuration(element.getAttribute('begin'), fallback: Duration.zero),
+    begin:
+        _parseDuration(element.getAttribute('begin'), fallback: Duration.zero),
     additive: _parseAdditive(element.getAttribute('additive')),
     keyTimes: keyTimes,
     type: type,
@@ -196,8 +197,10 @@ SvgAnimateAttribute? _parseAnimate(XmlElement element) {
   final rawValues = element.getAttribute('values');
   List<String>? values;
   if (rawValues != null) {
-    values =
-        rawValues.split(';').map((entry) => entry.trim()).toList(growable: false);
+    values = rawValues
+        .split(';')
+        .map((entry) => entry.trim())
+        .toList(growable: false);
   } else {
     final from = element.getAttribute('from');
     final to = element.getAttribute('to');
@@ -226,7 +229,8 @@ SvgAnimateAttribute? _parseAnimate(XmlElement element) {
   return SvgAnimateAttribute(
     duration: _parseDuration(element.getAttribute('dur')),
     repeatCount: _parseRepeatCount(element.getAttribute('repeatCount')),
-    begin: _parseDuration(element.getAttribute('begin'), fallback: Duration.zero),
+    begin:
+        _parseDuration(element.getAttribute('begin'), fallback: Duration.zero),
     additive: _parseAdditive(element.getAttribute('additive')),
     keyTimes: keyTimes,
     attributeName: attributeName,
@@ -333,9 +337,7 @@ Duration _parseDuration(String? raw, {Duration fallback = Duration.zero}) {
   // Reject NaN, Infinity, and negatives: `(value * 1e6).round()` would throw
   // on non-finite inputs, and a negative SMIL duration has no defined
   // playback semantics — fall back to whatever the caller wants instead.
-  if (parsedSeconds == null ||
-      !parsedSeconds.isFinite ||
-      parsedSeconds < 0.0) {
+  if (parsedSeconds == null || !parsedSeconds.isFinite || parsedSeconds < 0.0) {
     return fallback;
   }
   return Duration(microseconds: (parsedSeconds * 1e6).round());

@@ -85,10 +85,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       final sized = tester.widget<SizedBox>(
-        find.descendant(
-          of: find.byType(SvgFrame),
-          matching: find.byType(SizedBox),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(SvgFrame),
+              matching: find.byType(SizedBox),
+            )
+            .first,
       );
       expect(sized.width, 40.0);
       expect(sized.height, 40.0);
@@ -147,8 +149,10 @@ void main() {
     testWidgets('same asset path: second mount hits the cache (no second load)',
         (tester) async {
       var loadCount = 0;
-      final bundle = _CountingBundle({'svg/foo.svg': _validSvg},
-          onLoad: () => loadCount++,);
+      final bundle = _CountingBundle(
+        {'svg/foo.svg': _validSvg},
+        onLoad: () => loadCount++,
+      );
       await _pumpFramed(
         tester,
         SvgFrame.asset('svg/foo.svg', bundle: bundle),
@@ -168,8 +172,10 @@ void main() {
     testWidgets('clearCache evicts everything so the next mount re-loads',
         (tester) async {
       var loadCount = 0;
-      final bundle = _CountingBundle({'svg/foo.svg': _validSvg},
-          onLoad: () => loadCount++,);
+      final bundle = _CountingBundle(
+        {'svg/foo.svg': _validSvg},
+        onLoad: () => loadCount++,
+      );
       await _pumpFramed(
         tester,
         SvgFrame.asset('svg/foo.svg', bundle: bundle),
@@ -287,9 +293,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.byWidgetPredicate((widget) =>
-            widget is Semantics &&
-            widget.properties.label == 'hello',),
+        find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.label == 'hello',
+        ),
         findsOneWidget,
       );
     });
@@ -307,9 +313,9 @@ void main() {
       await tester.pumpAndSettle();
       // The semantics wrapper for our label must not exist.
       expect(
-        find.byWidgetPredicate((widget) =>
-            widget is Semantics &&
-            widget.properties.label == 'hello',),
+        find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.label == 'hello',
+        ),
         findsNothing,
       );
     });
@@ -330,10 +336,12 @@ void main() {
       );
       await tester.pump();
       final sized = tester
-          .widgetList<SizedBox>(find.descendant(
-            of: find.byType(SvgFrame),
-            matching: find.byType(SizedBox),
-          ),)
+          .widgetList<SizedBox>(
+            find.descendant(
+              of: find.byType(SvgFrame),
+              matching: find.byType(SizedBox),
+            ),
+          )
           .first;
       expect(sized.width, 99.0);
       expect(sized.height, 88.0);
