@@ -20,7 +20,6 @@ funding:
   - https://github.com/sponsors/robelator
 description: "Render SMIL-animated SVGs in Flutter with programmatic pause / resume / speed control."
 version: 0.1.0
-publish_to: none
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
