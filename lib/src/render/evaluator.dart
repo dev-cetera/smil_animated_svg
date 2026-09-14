@@ -214,15 +214,21 @@ String _interpolateColor(String a, String b, double t) {
   final colorB = parseSvgColor(b);
   if (colorA == null || colorB == null) return b;
   final lerped = Color.lerp(colorA, colorB, t) ?? colorB;
-  return _colorToHex(lerped);
+  return formatSvgColor(lerped);
 }
 
-String _colorToHex(Color c) {
+/// Format [color] as an SVG paint string: `#RRGGBB`, or `#RRGGBBAA` when it
+/// carries alpha. The inverse of [parseSvgColor], and the reason a colour can
+/// survive the round trip back into the live attribute map — dropping alpha
+/// here used to turn an interpolated `rgba()` keyframe opaque mid-animation.
+String formatSvgColor(Color color) {
   String pad(int v) => v.toRadixString(16).padLeft(2, '0');
-  final argb = c.toARGB32();
-  return '#${pad((argb >> 16) & 0xff)}'
+  final argb = color.toARGB32();
+  final alpha = (argb >> 24) & 0xff;
+  final rgb = '#${pad((argb >> 16) & 0xff)}'
       '${pad((argb >> 8) & 0xff)}'
       '${pad(argb & 0xff)}';
+  return alpha == 0xff ? rgb : '$rgb${pad(alpha)}';
 }
 
 /// Parse an SVG colour string. Supports `#RGB`, `#RRGGBB`, `#RRGGBBAA`,

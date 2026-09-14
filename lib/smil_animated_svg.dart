@@ -19,6 +19,10 @@
 ///     SVG; accepts the same rendering knobs plus `duration` / `curve` /
 ///     `repeat`, and tween shortcuts for `color` / `transform` / `opacity`.
 ///
+/// Both take a `colorMap` — `{Color: Color}` — that replaces the SVG's own
+/// `fill` / `stroke` paints as it renders, so one asset can serve any number
+/// of palettes without a second file.
+///
 /// Drive things yourself by wrapping a [SvgFrame] in an `AnimatedBuilder`.
 library;
 

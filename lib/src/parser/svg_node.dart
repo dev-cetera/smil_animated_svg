@@ -57,7 +57,12 @@ class SvgRoot {
   bool get hasAnimations => naturalCyclePeriod > Duration.zero;
 }
 
-abstract class SvgNode {
+/// A node in a parsed SVG tree: either an [SvgGroup] or an [SvgShape].
+///
+/// Sealed so a `switch` over the node kinds is exhaustive — adding a shape
+/// becomes a compile error everywhere the tree is walked by type (see
+/// `recolor_svg.dart`) rather than a silently dropped element.
+sealed class SvgNode {
   SvgNode({
     required this.baseTransform,
     required this.attributes,
@@ -87,7 +92,7 @@ class SvgGroup extends SvgNode {
   final List<SvgNode> children;
 }
 
-abstract class SvgShape extends SvgNode {
+sealed class SvgShape extends SvgNode {
   SvgShape({
     required super.baseTransform,
     required super.attributes,

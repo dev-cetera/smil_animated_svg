@@ -9,7 +9,11 @@ import 'parser/svg_node.dart';
 class SvgParseCache {
   const SvgParseCache._();
 
-  static const int maxEntries = 32;
+  /// A recoloured tree (see `recolor_svg.dart`) lives here alongside the
+  /// un-recoloured one it was derived from, so an app rendering its art in two
+  /// palettes holds two entries per asset. 64 keeps a screenful of both in
+  /// cache instead of evicting the palette that just scrolled off.
+  static const int maxEntries = 64;
   static final _entries = <String, SvgRoot>{};
 
   static SvgRoot? get(String key) {

@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
+import 'color_swaps.dart';
 import 'parse_cache.dart';
 import 'parser/svg_node.dart';
 import 'parser/svg_parser.dart';
+import 'recolor_svg.dart';
 import 'svg_frame.dart';
 
 /// Self-playing SVG widget.
@@ -48,6 +50,7 @@ class AnimatedSvg extends StatefulWidget {
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
     this.colorFilter,
+    this.colorMap,
     this.opacity = 1.0,
     this.transform,
     this.transformAlignment = Alignment.center,
@@ -81,6 +84,7 @@ class AnimatedSvg extends StatefulWidget {
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
     this.colorFilter,
+    this.colorMap,
     this.opacity = 1.0,
     this.transform,
     this.transformAlignment = Alignment.center,
@@ -115,6 +119,7 @@ class AnimatedSvg extends StatefulWidget {
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
     this.colorFilter,
+    this.colorMap,
     this.opacity = 1.0,
     this.transform,
     this.transformAlignment = Alignment.center,
@@ -149,6 +154,7 @@ class AnimatedSvg extends StatefulWidget {
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
     this.colorFilter,
+    this.colorMap,
     this.opacity = 1.0,
     this.transform,
     this.transformAlignment = Alignment.center,
@@ -204,6 +210,19 @@ class AnimatedSvg extends StatefulWidget {
   final Color? color;
   final BlendMode colorBlendMode;
   final ColorFilter? colorFilter;
+
+  /// Replaces the SVG's own colours before it renders: every `fill` / `stroke`
+  /// that parses to a key of this map is painted as the mapped value instead.
+  /// One asset can therefore serve several palettes.
+  ///
+  /// Applied to the parsed tree, keyframes included, so a `fill` the SVG
+  /// animates interpolates in the replacement palette rather than snapping
+  /// only where it lands on a keyframe.
+  ///
+  /// Matching is on the parsed colour, not the text in the file, so `white`,
+  /// `#fff` and `#ffffff` are one key. Alpha is ignored when matching, and the
+  /// source's alpha is multiplied into the replacement's.
+  final Map<Color, Color>? colorMap;
   final double opacity;
   final Matrix4? transform;
   final AlignmentGeometry transformAlignment;
@@ -230,11 +249,17 @@ class AnimatedSvg extends StatefulWidget {
 
 class _AnimatedSvgState extends State<AnimatedSvg>
     with TickerProviderStateMixin {
+  /// The tree as it will be painted — already recoloured when
+  /// [AnimatedSvg.colorMap] is set.
   SvgRoot? _root;
   Object? _loadError;
   StackTrace? _loadStack;
   AnimationController? _controller;
   CurvedAnimation? _curved;
+
+  /// Normalised [AnimatedSvg.colorMap], or null when there is nothing to
+  /// replace.
+  SvgColorSwaps? _swaps;
 
   /// See `_SvgFrameState._loadGeneration`. Same race protection: a load
   /// that completes after a newer one started must not clobber the newer
@@ -245,6 +270,7 @@ class _AnimatedSvgState extends State<AnimatedSvg>
   @override
   void initState() {
     super.initState();
+    _swaps = SvgColorSwaps.maybe(widget.colorMap);
     final cached = _trySyncCache();
     if (cached != null) {
       _root = cached;
@@ -254,13 +280,31 @@ class _AnimatedSvgState extends State<AnimatedSvg>
     }
   }
 
-  SvgRoot? _trySyncCache() {
-    if (widget.svgRoot != null) return widget.svgRoot;
-    if (widget.assetPath != null) {
-      return SvgParseCache.get('asset:${widget.assetPath}');
-    }
-    if (widget.url != null) return SvgParseCache.get('url:${widget.url}');
+  /// Parse-cache key of this source *before* colour replacement, or null when
+  /// the source isn't cacheable (a raw string, or a pre-parsed root).
+  String? get _sourceKey {
+    final assetPath = widget.assetPath;
+    if (assetPath != null) return 'asset:$assetPath';
+    final url = widget.url;
+    if (url != null) return 'url:$url';
     return null;
+  }
+
+  SvgRoot? _trySyncCache() {
+    final swaps = _swaps;
+    final parsed = widget.svgRoot;
+    if (parsed != null) {
+      return recolorSvgCached(parsed, swaps, sourceKey: null);
+    }
+    final sourceKey = _sourceKey;
+    if (sourceKey == null) return null;
+    if (swaps != null) {
+      final recolored = SvgParseCache.get(recolorCacheKey(sourceKey, swaps));
+      if (recolored != null) return recolored;
+    }
+    final raw = SvgParseCache.get(sourceKey);
+    if (raw == null) return null;
+    return recolorSvgCached(raw, swaps, sourceKey: sourceKey);
   }
 
   @override
@@ -271,6 +315,7 @@ class _AnimatedSvgState extends State<AnimatedSvg>
         widget.svgRoot != oldWidget.svgRoot ||
         widget.url != oldWidget.url) {
       _disposeController();
+      _swaps = SvgColorSwaps.maybe(widget.colorMap);
       _root = null;
       _loadError = null;
       _loadStack = null;
@@ -286,6 +331,20 @@ class _AnimatedSvgState extends State<AnimatedSvg>
         _loadIfNeeded();
       }
       return;
+    }
+    final swaps = SvgColorSwaps.maybe(widget.colorMap);
+    if (swaps != _swaps) {
+      _swaps = swaps;
+      // Same source, new palette. The controller keeps running: recolouring
+      // changes no timing, so a theme switch mid-animation doesn't restart it.
+      final recolored = _trySyncCache();
+      if (recolored != null) {
+        _root = recolored;
+      } else {
+        _root = null;
+        _loadGeneration++;
+        _loadIfNeeded();
+      }
     }
     if (widget.curve != oldWidget.curve && _controller != null) {
       _curved?.dispose();
@@ -409,7 +468,7 @@ class _AnimatedSvgState extends State<AnimatedSvg>
   Future<void> _loadIfNeeded() async {
     final generation = ++_loadGeneration;
     if (widget.svgRoot != null) {
-      _onLoaded(widget.svgRoot!, generation);
+      _onLoaded(widget.svgRoot!, generation, sourceKey: null);
       return;
     }
     if (widget.svgString != null) {
@@ -420,7 +479,7 @@ class _AnimatedSvgState extends State<AnimatedSvg>
       final cacheKey = 'url:${widget.url}';
       final cached = SvgParseCache.get(cacheKey);
       if (cached != null) {
-        _onLoaded(cached, generation);
+        _onLoaded(cached, generation, sourceKey: cacheKey);
         return;
       }
       final ownsClient = widget.httpClient == null;
@@ -449,7 +508,7 @@ class _AnimatedSvgState extends State<AnimatedSvg>
     final cacheKey = 'asset:$assetPath';
     final cached = SvgParseCache.get(cacheKey);
     if (cached != null) {
-      _onLoaded(cached, generation);
+      _onLoaded(cached, generation, sourceKey: cacheKey);
       return;
     }
     final bundle = widget.bundle ?? DefaultAssetBundle.of(context);
@@ -472,15 +531,16 @@ class _AnimatedSvgState extends State<AnimatedSvg>
     try {
       final parsed = parseSvg(source);
       if (cacheKey != null) SvgParseCache.put(cacheKey, parsed);
-      _onLoaded(parsed, generation);
+      _onLoaded(parsed, generation, sourceKey: cacheKey);
     } catch (error, stack) {
       _reportError(error, stack, generation: generation);
     }
   }
 
-  void _onLoaded(SvgRoot root, int generation) {
+  void _onLoaded(SvgRoot root, int generation, {required String? sourceKey}) {
     if (!_stillCurrent(generation)) return;
-    setState(() => _root = root);
+    final resolved = recolorSvgCached(root, _swaps, sourceKey: sourceKey);
+    setState(() => _root = resolved);
     _startIfReady();
   }
 

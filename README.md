@@ -1,5 +1,5 @@
 [![pub](https://img.shields.io/pub/v/smil_animated_svg.svg)](https://pub.dev/packages/smil_animated_svg)
-[![tag](https://img.shields.io/badge/Tag-v0.1.0-purple?logo=github)](https://github.com/dev-cetera/smil_animated_svg/tree/v0.1.0)
+[![tag](https://img.shields.io/badge/Tag-v0.2.0-purple?logo=github)](https://github.com/dev-cetera/smil_animated_svg/tree/v0.2.0)
 [![buymeacoffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/dev_cetera)
 [![sponsor](https://img.shields.io/badge/Sponsor-grey?logo=github-sponsors&logoColor=pink)](https://github.com/sponsors/dev-cetera)
 [![patreon](https://img.shields.io/badge/Patreon-grey?logo=patreon)](https://www.patreon.com/robelator)
@@ -31,7 +31,7 @@ Two widgets ship in the box:
 | `SvgFrame` | Leaf renderer. Draws one frame of an SVG at a given `position` (0..1). No ticker, no animation controller. Drop one in for a static SVG, or wrap one in an `AnimatedBuilder` to drive `position` yourself. |
 | `AnimatedSvg` | Self-playing. Owns an internal `AnimationController` and plays the SVG's natural cycle (or a custom `duration`). Adds `curve`, `repeat`, `stopAt`, `position` (freeze), and tween shortcuts for `color`, `transform`, and `opacity`. |
 
-Built-in `AnimatedSvgFilters`: `grayscale`, `sepia`, `invert`, `tint`, `colorize`.
+Both take a `colorMap` that swaps the SVG's own colours as it renders (see [Colour replacement](#colour-replacement)), and there are built-in `AnimatedSvgFilters` for whole-image effects: `grayscale`, `sepia`, `invert`, `tint`, `colorize`.
 
 Supported SVG subset: `<g>`, `<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polygon>`, `<polyline>`, `<animate>`, `<animateTransform>` (translate, rotate, scale, skewX, skewY, matrix). `calcMode="linear|spline|discrete"` with `keyTimes` and `keySplines`. From/to/by shorthands. Indefinite and finite `repeatCount`. **No gradients, no `<use>`, no `<text>`, no `<image>`, no `<animateMotion>`, no CSS filter effects.**
 
@@ -113,9 +113,32 @@ SvgFrame.network(
 
 The signatures match `Image.errorBuilder` / `Image.frameBuilder` conventions. With no `errorBuilder`, a failed load collapses to an empty `SizedBox` instead of throwing — bad SVGs never take a frame down.
 
+### Colour replacement
+
+An SVG is just markup, so its colours can be swapped before it is drawn. Hand either widget a `colorMap` and one asset serves any number of palettes — no second file, no duplicated artwork to keep in sync:
+
+```dart
+// Authored in the mint palette; rendered in the love palette.
+final loveSwap = {
+  const Color(0xFF48C374): const Color(0xFFFBA3C8),
+  const Color(0xFF17924D): const Color(0xFFE1619C),
+};
+
+SvgFrame.asset('assets/menu_lists.svg', colorMap: loveSwap);
+```
+
+- **Keys match the parsed colour, not the text in the file.** `white`, `#fff`, `#ffffff` and `rgb(255,255,255)` are all one key, so the author's spelling never has to match the caller's.
+- **Alpha is ignored when matching, and the two alphas multiply.** A `#17924D80` fill still matches an opaque key, and mapping to a half-transparent replacement fades the result. A swap can never make a translucent part of the artwork solid.
+- **Anything that isn't a colour is left exactly as authored** — `none`, `inherit`, `currentColor`, a `url(#gradient)` paint server, and any colour the map has no entry for.
+- **Animated colours interpolate in the new palette.** The swap is applied to the parsed tree, keyframes included, so a `fill` the SVG animates from green to white becomes pink to white all the way through — not just at the instant it sits on a keyframe. Per-frame painting cost is unchanged.
+- **One recoloured tree per palette is cached**, so a list of forty rows in one palette pays for the swap once.
+- Unrelated to `color` / `colorFilter`, which composite over the *finished* render — `color` with the default `BlendMode.srcIn` flattens the whole SVG to a single-colour silhouette, so the two are rarely useful together.
+
+Note that `Color` has no primitive equality, so a `colorMap` literal cannot be `const`. Hold the palette in a top-level `final` and the widget rebuild cost stays nil.
+
 ### Parse cache
 
-Repeated mounts of the same `assetPath` or `url` reuse a parsed `SvgRoot` (32-entry LRU, hot-reload-aware). Call `SvgFrame.clearCache()` to drop it — useful in tests.
+Repeated mounts of the same `assetPath` or `url` reuse a parsed `SvgRoot` (64-entry LRU, hot-reload-aware). A recoloured tree is cached next to the one it came from, under a key that includes the palette. Call `SvgFrame.clearCache()` to drop everything — useful in tests.
 
 <!-- END _README_CONTENT -->
 

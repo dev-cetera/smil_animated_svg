@@ -26,7 +26,9 @@ lib/
     animated_svg_widget.dart  # AnimatedSvg (StatefulWidget + TickerProviderStateMixin)
     svg_frame.dart            # SvgFrame + shared buildSvgCustomPaint()
     filters.dart              # AnimatedSvgFilters: grayscale, sepia, invert, tint, colorize
-    parse_cache.dart          # 32-entry LRU keyed by "asset:..." / "url:..."
+    color_swaps.dart          # SvgColorSwaps: normalised {Color: Color} lookup table
+    recolor_svg.dart          # recolorSvg: parsed tree -> tree with paints replaced
+    parse_cache.dart          # 64-entry LRU keyed by "asset:..." / "url:..." (+ "#palette")
     parser/
       svg_parser.dart         # XmlDocument -> SvgRoot
       svg_node.dart           # SvgRoot, SvgGroup, SvgPathShape, SvgRectShape, ...
@@ -50,6 +52,9 @@ Data flow per frame: `AnimationController.value` → `super(repaint: animation)`
 - **Parse cache is global static state, cleared by `reassemble`.** Hot reload invalidates automatically. Tests should call `SvgFrame.clearCache()` (or `AnimatedSvg.clearCache()`) if they care about cold-load behaviour.
 - **`SvgShape.resolvePath` caches by a string key.** Shapes whose geometry isn't animated keep the same key across frames and skip `path_drawing` re-parsing. Don't break the cache by changing what `pathCacheKey` includes without updating the corresponding `buildPath`.
 - **Non-finite filtering matters.** `transform_parser.dart` and `svg_painter.dart` filter NaN/±Inf out of numeric inputs. A NaN in a `Matrix4` entry silently produces empty Skia draws downstream — the worst kind of failure. Keep the filters in place.
+- **`colorMap` is applied to the parsed tree, not at paint time.** `recolor_svg.dart` rebuilds the node tree with every matching `fill` / `stroke` replaced — attribute values *and* `<animate>` keyframe values — and caches the result under `"<source>#<palette>"`. Two reasons it lives there rather than in `_paintShape`: an interpolated colour matches no key, so a paint-time swap could only recolour the instants that land exactly on a keyframe; and re-matching the evaluator's own output would apply a two-entry swap (A→B, B→A) twice and cancel it. The painter and evaluator know nothing about colour replacement, and the per-frame cost is unchanged.
+- **`SvgNode` / `SvgShape` are `sealed`** so the `switch` in `recolor_svg.dart` is exhaustive — a new shape type is a compile error there rather than an element silently dropped from recoloured trees.
+- **`formatSvgColor` is the inverse of `parseSvgColor`** and emits `#RRGGBBAA` when a colour carries alpha. Don't "simplify" it back to six digits: the evaluator round-trips interpolated colours through it, and dropping alpha turned a fade between two `rgba()` keyframes opaque.
 - **SVG `opacity` is non-inheriting.** The group painter pulls `opacity` off the merged attribute map before recursing into children; the group's own opacity is applied via `saveLayer`. Don't "fix" this to inherit.
 
 ## Linting
