@@ -59,7 +59,7 @@ Data flow per frame: `AnimationController.value` → `super(repaint: animation)`
 
 ## Linting
 
-Uses **Flutter** lints (`include: package:flutter_lints/recommended.yaml`), not the umbrella workspace's strict Dart config. `custom_lint` plugin is declared but no `df_safer_dart_lints` dependency exists here, so it's effectively a no-op. Key knobs:
+Uses **Flutter** lints (`include: package:flutter_lints/recommended.yaml`), not the umbrella workspace's strict Dart config. There is deliberately **no `analyzer: plugins:` section** — `custom_lint` used to be declared here as a no-op (no `df_safer_dart_lints` dependency exists in this package), and from Dart 3.11 the analyzer reports the legacy section as an issue, which fails the release workflow's `flutter analyze` step. Don't re-add it on a template sync. Key knobs:
 
 - `strict-casts`, `strict-inference`, `strict-raw-types` all on.
 - `prefer_relative_imports: error` — never use `package:smil_animated_svg/...` inside `lib/`.
