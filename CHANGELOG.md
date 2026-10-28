@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [2.2.4]
+
+- Merge branch 'main' into prod
+
+
 ## [2.2.3]
 
 - Merge branch 'main' into prod
