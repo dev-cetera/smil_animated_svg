@@ -1,5 +1,11 @@
 # CHANGELOG
 
+
+## [2.2.0]
+
+- chore: standardize README and CI/CD workflows, remove donation links, update contact info and repository links
+- chore: resolve analyzer issues
+
 ## [0.2.0]
 
 - `colorMap` on `SvgFrame` and `AnimatedSvg`: a `Map<Color, Color>` that replaces the SVG's own `fill` / `stroke` paints as it renders, so one asset can serve any number of palettes. Matching is on the parsed colour rather than the text in the file (`white`, `#fff` and `#ffffff` are one key) and ignores alpha; the source's alpha multiplies into the replacement's.
