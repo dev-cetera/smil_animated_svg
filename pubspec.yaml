@@ -15,7 +15,7 @@ name: smil_animated_svg
 homepage: https://dev-cetera.com/
 repository: https://github.com/dev-cetera/animated_svg
 description: "Render SMIL-animated SVGs in Flutter with programmatic pause / resume / speed control and per-colour replacement."
-version: 2.2.1
+version: 2.2.2
 
 environment:
   sdk: ">=3.5.0 <4.0.0"

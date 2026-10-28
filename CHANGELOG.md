@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [2.2.2]
+
+- Merge remote-tracking branch 'origin/prod' into prod
+
+
 ## [2.2.1]
 
 - fix: migrate to analyzer-plugin lints, fix CI workflows, format
